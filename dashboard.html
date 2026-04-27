@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PROJEART - Controle de Ordens de Serviço</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    /* ══════════════════════════════════════════════
+       TEMA — variáveis Light (padrão) e Dark
+    ══════════════════════════════════════════════ */
+    :root {
+      --bg:             #EEF3FA;
+      --card-bg:        #FFFFFF;
+      --card-border:    #D6E6F7;
+      --card-shadow:    0 2px 10px rgba(10,45,110,0.09);
+      --text-main:      #0D1B3E;
+      --text-muted:     #5A6E8C;
+      --text-faint:     #96A8C0;
+      --accent:         #1565C0;
+      --accent-dark:    #0A2D6E;
+      --accent-light:   #42A5F5;
+      --accent-glow:    rgba(21,101,192,0.12);
+      --tab-inactive-bg:#D4E5F7;
+      --tab-inactive-c: #1565C0;
+      --tab-border:     #A8CCE8;
+      --tbl-even:       #F4F9FF;
+      --tbl-hover:      #DCF0FF;
+      --tbl-border:     #D8ECF8;
+      --input-border:   #A8CCE8;
+      --input-bg:       #FFFFFF;
+      --input-c:        #1A2D50;
+      --export-bg:      #FFFFFF;
+      --export-item-c:  #1565C0;
+      --export-hover:   #EEF4FF;
+      --export-border:  #E0EDF8;
+      --kpi-sub:        #7A90AC;
+    }
+    body.dark {
+      --bg:             #0F1624;
+      --card-bg:        #18243C;
+      --card-border:    rgba(255,255,255,0.06);
+      --card-shadow:    0 2px 14px rgba(0,0,0,0.45);
+      --text-main:      #D8E8F8;
+      --text-muted:     #7A96BE;
+      --text-faint:     #4A6080;
+      --accent:         #2979FF;
+      --accent-dark:    #1A3E8A;
+      --accent-light:   #64B5F6;
+      --accent-glow:    rgba(41,121,255,0.15);
+      --tab-inactive-bg:#1A2744;
+      --tab-inactive-c: #7AAEE8;
+      --tab-border:     rgba(255,255,255,0.08);
+      --tbl-even:       #162035;
+      --tbl-hover:      #1E3058;
+      --tbl-border:     rgba(255,255,255,0.07);
+      --input-border:   rgba(255,255,255,0.14);
+      --input-bg:       #1A2744;
+      --input-c:        #C8DCF4;
+      --export-bg:      #1A2744;
+      --export-item-c:  #7AAEE8;
+      --export-hover:   rgba(255,255,255,0.06);
+      --export-border:  rgba(255,255,255,0.07);
+      --kpi-sub:        #4A6080;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      overflow: hidden;
+      transition: background 0.25s;
+    }
+
+    /* ─── HEADER ─── */
+    .header {
+      background: linear-gradient(90deg, #071E4A 0%, #0D3A8C 55%, #1565C0 100%);
+      color: white;
+      padding: 0 18px;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 3px 14px rgba(0,0,0,0.45);
+      position: relative;
+      z-index: 10;
+    }
+    .logo-box { background: transparent; border: none; padding: 0; flex-shrink: 0; }
+    .header-divider {
+      width: 1px; height: 38px;
+      background: rgba(255,255,255,0.22);
+      flex-shrink: 0;
+    }
+    .header-info-block {
+      display: flex; flex-direction: column;
+      justify-content: center; gap: 4px;
+    }
+    .header-main-title {
+      font-size: 18px; font-weight: 800;
+      color: white; letter-spacing: 0.2px;
+      white-space: nowrap;
+    }
+    .header-subtitle {
+      font-size: 11.5px; color: rgba(144,202,249,0.85);
+      letter-spacing: 0.1px; white-space: nowrap;
+    }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    .btn-refresh {
+      background: transparent;
+      border: 1.5px solid rgba(66,165,245,0.7);
+      color: #90CAF9;
+      font-size: 11px; font-weight: 700;
+      padding: 5px 11px; border-radius: 5px;
+      cursor: pointer; display: flex; align-items: center; gap: 5px;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .btn-refresh:hover { background: rgba(66,165,245,0.2); border-color: #42A5F5; color: white; }
+    .btn-refresh.spin svg { animation: spin 0.7s linear infinite; }
+
+    /* Botão dark mode */
+    .btn-darkmode {
+      background: transparent;
+      border: 1.5px solid rgba(255,255,255,0.22);
+      color: rgba(255,255,255,0.65);
+      font-size: 14px;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+    }
+    .btn-darkmode:hover { background: rgba(255,255,255,0.12); color: white; border-color: rgba(255,255,255,0.5); }
+
+    /* ─── EXPORT DROPDOWN ─── */
+    .export-wrap { position: relative; }
+    .btn-export {
+      background: rgba(233,30,99,0.9);
+      border: 1.5px solid rgba(233,30,99,0.9);
+      color: white; font-size: 11px; font-weight: 700;
+      padding: 5px 11px; border-radius: 5px;
+      cursor: pointer; display: flex; align-items: center; gap: 5px;
+      white-space: nowrap; transition: background 0.15s;
+    }
+    .btn-export:hover { background: #C2185B; border-color: #C2185B; }
+    .export-menu {
+      display: none; position: absolute; right: 0; top: calc(100% + 6px);
+      background: var(--export-bg);
+      border-radius: 8px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+      min-width: 210px; z-index: 999; overflow: hidden;
+      border: 1px solid var(--export-border);
+    }
+    .export-menu.open { display: block; }
+    .export-item {
+      padding: 11px 16px; font-size: 12px; font-weight: 600;
+      color: var(--export-item-c);
+      cursor: pointer; display: flex; align-items: center; gap: 9px;
+      border-bottom: 1px solid var(--export-border);
+      transition: background 0.12s;
+    }
+    .export-item:last-child { border-bottom: none; }
+    .export-item:hover { background: var(--export-hover); }
+
+    /* ─── TABS ─── */
+    .tabs-bar {
+      display: flex; gap: 4px; flex-shrink: 0;
+      border-bottom: 2px solid var(--tab-border);
+      padding-bottom: 0;
+    }
+    .tab-btn {
+      padding: 7px 20px; font-size: 12px; font-weight: 700;
+      border: none; border-radius: 6px 6px 0 0; cursor: pointer;
+      background: var(--tab-inactive-bg); color: var(--tab-inactive-c);
+      transition: background 0.15s, color 0.15s;
+      border-bottom: 2px solid transparent; margin-bottom: -2px;
+      letter-spacing: 0.2px;
+    }
+    .tab-btn.active { background: var(--card-bg); color: var(--accent-dark); border-bottom: 2px solid var(--card-bg); }
+    body.dark .tab-btn.active { color: var(--accent-light); }
+    .tab-btn:hover:not(.active) { background: var(--accent-glow); }
+    .tab-panel { display: none; flex-direction: column; gap: 10px; }
+    .tab-panel.active { display: flex; }
+
+    /* ─── TABLE ─── */
+    .table-toolbar {
+      display: flex; align-items: center; gap: 10px;
+      flex-wrap: wrap; flex-shrink: 0;
+    }
+    .table-search {
+      flex: 1; min-width: 200px;
+      padding: 7px 12px;
+      border: 1.5px solid var(--input-border);
+      border-radius: 6px; font-size: 12px;
+      color: var(--input-c); background: var(--input-bg); outline: none;
+      transition: border-color 0.15s, background 0.2s;
+    }
+    .table-search:focus { border-color: var(--accent); }
+    .btn-table-export {
+      padding: 7px 13px; font-size: 11px; font-weight: 700;
+      border: none; border-radius: 6px; cursor: pointer;
+      display: flex; align-items: center; gap: 6px; white-space: nowrap;
+    }
+    .btn-excel      { background: #1D6F42; color: white; }
+    .btn-excel:hover{ background: #145430; }
+    .btn-pdf-table  { background: #B71C1C; color: white; }
+    .btn-pdf-table:hover { background: #8B0000; }
+    .btn-sheets     { background: #0F9D58; color: white; }
+    .btn-sheets:hover{ background: #0A7A42; }
+    .btn-toggle-tech {
+      padding: 7px 13px; font-size: 11px; font-weight: 700;
+      border-radius: 5px; border: 1.5px solid var(--accent);
+      background: transparent; color: var(--accent);
+      cursor: pointer; display: flex; align-items: center; gap: 6px;
+      white-space: nowrap; transition: background 0.15s, color 0.15s;
+    }
+    .btn-toggle-tech:hover,
+    .btn-toggle-tech.active { background: var(--accent); color: white; }
+    .table-info { font-size: 11px; color: var(--text-faint); margin-left: auto; }
+    .table-wrap { overflow: auto; flex: 1; border-radius: 8px; border: 1px solid var(--card-border); }
+    table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+    thead tr:first-child th {
+      background: var(--accent-dark);
+      color: white; padding: 9px 10px; text-align: left;
+      font-weight: 700; position: sticky; top: 0; white-space: nowrap; z-index: 2;
+      letter-spacing: 0.2px;
+    }
+    thead tr:nth-child(2) th {
+      background: var(--accent); padding: 4px 5px;
+      position: sticky; top: 37px; z-index: 2;
+    }
+    .col-filter {
+      width: 100%; font-size: 10px; padding: 3px 4px;
+      border: none; border-radius: 3px;
+      background: rgba(255,255,255,0.9); color: #1A2744; cursor: pointer;
+    }
+    body.dark .col-filter { background: rgba(255,255,255,0.1); color: #C8DCF4; }
+    tbody tr:nth-child(even) { background: var(--tbl-even); }
+    tbody tr:hover { background: var(--tbl-hover); }
+    tbody td {
+      padding: 7px 10px; color: var(--text-main);
+      border-bottom: 1px solid var(--tbl-border);
+      transition: background 0.1s;
+    }
+
+    @media print {
+      @page { size: A4 landscape; margin: 10mm; }
+
+      body { overflow: visible !important; background: white !important; }
+      .header { box-shadow: none !important; }
+      .sidebar, .header-right, #loadingDiv, .tabs-bar { display: none !important; }
+
+      .layout { height: auto !important; overflow: visible !important; flex-direction: column !important; }
+      .main   { overflow: visible !important; padding: 6px !important; flex: none !important; }
+
+      #tab-graficos { display: flex !important; flex-direction: column !important; gap: 8px !important; }
+      #tab-tabela   { display: none !important; }
+
+      /* Grid de 2 colunas no print */
+      #tab-graficos > div[style*="grid"] {
+        display: grid !important;
+        grid-template-columns: 1fr 1.8fr !important;
+        gap: 8px !important;
+        page-break-inside: avoid;
+      }
+
+      /* KPI sem quebra */
+      .kpi-row { break-inside: avoid; page-break-inside: avoid; }
+      .kpi-card { border: 1px solid #ccc !important; box-shadow: none !important; }
+
+      /* Alturas fixas para os charts renderizarem */
+      .chart-card { break-inside: avoid; page-break-inside: avoid; box-shadow: none !important; border: 1px solid #ddd !important; }
+      .chart-card[style*="flex:1"] { height: 220px !important; flex: none !important; }
+      .chart-wrap { height: 160px !important; }
+      .chart-wrap canvas { height: 160px !important; max-height: 160px !important; }
+
+      /* Técnicos: limita altura no print */
+      #techWrap { height: 420px !important; max-height: 420px !important; overflow: hidden !important; }
+      #techWrap canvas { height: 420px !important; max-height: 420px !important; }
+
+      /* OS por Mês */
+      .chart-card[style*="height:240px"] { height: 220px !important; }
+
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+
+    /* ─── LAYOUT ─── */
+    .layout {
+      display: flex;
+      height: calc(100vh - 68px);
+      overflow: hidden;
+    }
+
+    /* ─── SIDEBAR ─── */
+    .sidebar {
+      width: 185px;
+      min-width: 185px;
+      background: #C5D9F0;
+      padding: 10px 8px;
+      overflow-y: auto;
+      border-right: 3px solid #90BAE4;
+    }
+    .filter-group { margin-bottom: 11px; }
+    .filter-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #0A2D6E;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+    }
+    .filter-clear {
+      cursor: pointer;
+      color: #E91E63;
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 3px;
+      background: rgba(233,30,99,0.1);
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .filter-clear:hover { background: rgba(233,30,99,0.22); }
+    .filter-list {
+      border: 1px solid #7AAFD4;
+      border-radius: 4px;
+      background: white;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .filter-item {
+      padding: 5px 7px;
+      font-size: 11px;
+      cursor: pointer;
+      border-bottom: 1px solid #E3EEF8;
+      color: #1565C0;
+      transition: background 0.12s;
+      user-select: none;
+    }
+    .filter-item:hover   { background: #D6EAF8; }
+    .filter-item.selected { background: #1565C0; color: white; font-weight: 600; }
+    .filter-item:last-child { border-bottom: none; }
+    .filter-item.hidden { display: none; }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: #90BAE4; border-radius: 3px; }
+    .filter-list::-webkit-scrollbar { width: 3px; }
+    .filter-list::-webkit-scrollbar-thumb { background: #90BAE4; border-radius: 3px; }
+
+    /* ─── MAIN ─── */
+    .main {
+      flex: 1; overflow-y: auto; padding: 12px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .main::-webkit-scrollbar { width: 5px; }
+    .main::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 3px; }
+
+    /* ─── LOADING ─── */
+    .loading {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: var(--accent); font-size: 15px; gap: 14px;
+    }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 4px solid var(--card-border);
+      border-top: 4px solid var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── KPI ROW ─── */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px; flex-shrink: 0;
+    }
+    .kpi-card {
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 14px 12px 12px;
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--card-border);
+      display: flex; flex-direction: column; gap: 2px;
+      position: relative; overflow: hidden;
+      transition: background 0.25s, border-color 0.25s;
+    }
+    .kpi-card::before {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+      background: var(--accent);
+      border-radius: 10px 0 0 10px;
+    }
+    .kpi-card.pink::before   { background: #E91E63; }
+    .kpi-card.green::before  { background: #2E7D32; }
+    .kpi-card.orange::before { background: #E65100; }
+    .kpi-card.teal::before   { background: #00796B; }
+    .kpi-label {
+      font-size: 9px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.7px; color: var(--text-muted); padding-left: 8px;
+    }
+    .kpi-value {
+      font-size: 28px; font-weight: 900;
+      color: var(--accent); line-height: 1.1; padding-left: 8px;
+    }
+    .kpi-value.pink   { color: #E91E63; }
+    .kpi-value.green  { color: #2E7D32; }
+    .kpi-value.orange { color: #E65100; }
+    .kpi-value.teal   { color: #00796B; }
+    .kpi-sub { font-size: 9px; color: var(--kpi-sub); padding-left: 8px; margin-top: 2px; }
+
+    /* ─── CHART ROWS ─── */
+    .row-3col  { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .row-left2 { display: grid; grid-template-columns: 2fr 3fr;     gap: 10px; }
+    .row-full  { display: grid; grid-template-columns: 1fr; }
+
+    /* ─── CHART CARD ─── */
+    .chart-card {
+      background: var(--card-bg);
+      border-radius: 10px; padding: 14px;
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--card-border);
+      display: flex; flex-direction: column;
+      transition: background 0.25s, border-color 0.25s;
+    }
+    .chart-card-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 10px; padding-bottom: 8px;
+      border-bottom: 1px solid var(--card-border);
+      flex-shrink: 0;
+    }
+    .chart-logo {
+      background: var(--accent-dark); color: var(--accent-light);
+      font-size: 7px; font-weight: 900;
+      padding: 3px 6px; border-radius: 4px;
+      letter-spacing: 1px; flex-shrink: 0;
+    }
+    .chart-title { font-size: 12px; font-weight: 700; color: var(--text-main); letter-spacing: 0.2px; }
+    .chart-wrap  { position: relative; flex: 1; min-height: 0; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo-box" style="background:white; border-radius:6px; padding:1px 6px; display:flex; align-items:center; height:56px; overflow:hidden; flex-shrink:0;">
+    <img src="logo projeart.jpg" alt="PROJEART" style="height:58px; width:auto; display:block;">
+  </div>
+  <div class="header-divider"></div>
+  <div class="header-info-block">
+    <div class="header-main-title">Controle de Ordens de Serviço · Manutenção Industrial</div>
+    <div class="header-subtitle" id="headerSubtitle">Carregando dados...</div>
+  </div>
+  <div class="header-right">
+    <a href="https://docs.google.com/spreadsheets/d/1UD8mjzlgmLffk-lZUPAp00prUdAktQ6IjAIc2lGLxoA/edit?gid=665273406" target="_blank" class="btn-refresh" style="text-decoration:none;" title="Abrir Planilha">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      Planilha
+    </a>
+    <button class="btn-darkmode" id="btnDark" onclick="toggleDarkMode()" title="Alternar modo escuro">🌙</button>
+    <button class="btn-refresh" id="btnRefresh" onclick="manualRefresh()" title="Atualizar dados">
+      <svg id="refreshIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+      </svg>
+      Atualizar
+    </button>
+    <div class="export-wrap" id="exportWrap">
+      <button class="btn-export" onclick="toggleExportMenu()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Exportar
+      </button>
+      <div class="export-menu" id="exportMenu">
+        <div class="export-item" onclick="exportarImagem()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#E91E63" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Baixar Imagem (PNG)
+        </div>
+        <div class="export-item" onclick="exportarPDF()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1565C0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Imprimir / Salvar PDF
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="filter-group">
+      <div class="filter-label">Ano <span class="filter-clear" onclick="clearFilter('year')">✕ Limpar</span></div>
+      <div class="filter-list" id="filter-year"></div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Mês <span class="filter-clear" onclick="clearFilter('month')">✕ Limpar</span></div>
+      <div class="filter-list" id="filter-month"></div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Semana <span class="filter-clear" onclick="clearFilter('week')">✕ Limpar</span></div>
+      <div class="filter-list" id="filter-week"></div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Unidade <span class="filter-clear" onclick="clearFilter('unit')">✕ Limpar</span></div>
+      <div class="filter-list" id="filter-unit"></div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Técnico(s) <span class="filter-clear" onclick="clearFilter('tech')">✕ Limpar</span></div>
+      <div class="filter-list" id="filter-tech"></div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Tipo de Serviço <span class="filter-clear" onclick="clearFilter('service')">✕ Limpar</span></div>
+      <div class="filter-list" id="filter-service"></div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Tipo de Manutenção <span class="filter-clear" onclick="clearFilter('maint')">✕ Limpar</span></div>
+      <div class="filter-list" id="filter-maint"></div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Setor <span class="filter-clear" onclick="clearFilter('sector')">✕ Limpar</span></div>
+      <div class="filter-list" id="filter-sector"></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main" id="mainArea">
+
+    <!-- LOADING -->
+    <div class="loading" id="loadingDiv">
+      <div class="spinner"></div>
+      Carregando dados da planilha...
+    </div>
+
+    <!-- DASHBOARD (hidden until data loads) -->
+    <div id="dashboardDiv" style="display:none; flex-direction:column; gap:10px; height:100%;">
+
+      <!-- KPI Row -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">Total de OS</div>
+          <div class="kpi-value" id="kpiTotal">-</div>
+          <div class="kpi-sub">no período</div>
+        </div>
+        <div class="kpi-card pink">
+          <div class="kpi-label">Técnicos Ativos</div>
+          <div class="kpi-value pink" id="kpiTechs">-</div>
+          <div class="kpi-sub">participações únicas</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">OS Corretiva</div>
+          <div class="kpi-value green" id="kpiCorretiva">-</div>
+          <div class="kpi-sub" id="kpiCorretivaP">do total</div>
+        </div>
+        <div class="kpi-card orange">
+          <div class="kpi-label">OS Preventiva</div>
+          <div class="kpi-value orange" id="kpiPreventiva">-</div>
+          <div class="kpi-sub" id="kpiPreventivaP">do total</div>
+        </div>
+        <div class="kpi-card teal">
+          <div class="kpi-label">Setores Atendidos</div>
+          <div class="kpi-value teal" id="kpiSetores">-</div>
+          <div class="kpi-sub">locais únicos</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs-bar">
+        <button class="tab-btn active" onclick="showTab('graficos')">📊 Gráficos</button>
+        <button class="tab-btn" onclick="showTab('tabela')">📋 Tabela de OS</button>
+      </div>
+
+      <!-- TAB: GRÁFICOS -->
+      <div class="tab-panel active" id="tab-graficos">
+
+      <div style="display:grid; grid-template-columns:1fr 2fr; gap:10px; flex-shrink:0;">
+
+        <!-- Coluna esquerda: Unidade + Serviço + Manutenção (estica para preencher altura) -->
+        <div style="display:flex; flex-direction:column; gap:10px; align-self:stretch;">
+          <div class="chart-card" style="flex:1; min-height:180px;">
+            <div class="chart-card-header">
+              <div class="chart-title">Manutenção por Unidade</div>
+            </div>
+            <div class="chart-wrap"><canvas id="chartUnit"></canvas></div>
+          </div>
+          <div class="chart-card" style="flex:1; min-height:180px;">
+            <div class="chart-card-header">
+              <div class="chart-title">Tipo de Serviço</div>
+            </div>
+            <div class="chart-wrap"><canvas id="chartService"></canvas></div>
+          </div>
+          <div class="chart-card" style="flex:1; min-height:180px;">
+            <div class="chart-card-header">
+              <div class="chart-title">Tipo de Manutenção</div>
+            </div>
+            <div class="chart-wrap"><canvas id="chartMaint"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Coluna direita: Técnicos (dinâmico) + OS por Mês -->
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div class="chart-title">Quantidade de Ordens de Serviço por Técnico</div>
+            </div>
+            <div id="techWrap">
+              <canvas id="chartTech"></canvas>
+            </div>
+          </div>
+          <div class="chart-card" style="height:240px">
+            <div class="chart-card-header">
+              <div class="chart-title">Quantidade de OS por Mês</div>
+            </div>
+            <div class="chart-wrap"><canvas id="chartMonth"></canvas></div>
+          </div>
+        </div>
+
+      </div>
+
+      </div><!-- /tab-graficos -->
+
+      <!-- TAB: TABELA -->
+      <div class="tab-panel" id="tab-tabela">
+        <div class="chart-card" style="display:flex; flex-direction:column; gap:10px; padding:14px;">
+
+          <!-- Toolbar -->
+          <div class="table-toolbar">
+            <input class="table-search" id="tableSearch" type="text" placeholder="🔍 Buscar por técnico, máquina, setor..." oninput="filterTable()">
+            <button class="btn-toggle-tech" id="btnToggleTech" onclick="toggleTableMode()" title="Alternar entre uma linha por OS ou uma linha por técnico">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              Expandir por Técnico
+            </button>
+            <button class="btn-table-export btn-excel" onclick="exportarExcel()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Exportar Excel
+            </button>
+            <button class="btn-table-export btn-pdf-table" onclick="exportarTabelaPDF()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Exportar PDF
+            </button>
+            <span class="table-info" id="tableInfo"></span>
+          </div>
+
+          <!-- Tabela -->
+          <div class="table-wrap" style="max-height:600px;">
+            <table id="osTable">
+              <thead>
+                <tr>
+                  <th>Inserido em ↓</th>
+                  <th>Data do Serviço</th>
+                  <th>Unidade</th>
+                  <th>Setor</th>
+                  <th>Máquina/Equipamento</th>
+                  <th>Tipo de Serviço</th>
+                  <th>Tipo de Manutenção</th>
+                  <th>Técnico</th>
+                  <th>Descrição do Problema</th>
+                  <th>Serviço Realizado</th>
+                </tr>
+                <tr id="filterRow">
+                  <th><select class="col-filter" onchange="applyColFilters()" data-col="0"><option value="">Todos</option></select></th>
+                  <th><select class="col-filter" onchange="applyColFilters()" data-col="1"><option value="">Todos</option></select></th>
+                  <th><select class="col-filter" onchange="applyColFilters()" data-col="2"><option value="">Todos</option></select></th>
+                  <th><select class="col-filter" onchange="applyColFilters()" data-col="3"><option value="">Todos</option></select></th>
+                  <th><select class="col-filter" onchange="applyColFilters()" data-col="4"><option value="">Todos</option></select></th>
+                  <th><select class="col-filter" onchange="applyColFilters()" data-col="5"><option value="">Todos</option></select></th>
+                  <th><select class="col-filter" onchange="applyColFilters()" data-col="6"><option value="">Todos</option></select></th>
+                  <th><select class="col-filter" onchange="applyColFilters()" data-col="7"><option value="">Todos</option></select></th>
+                  <th></th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /tab-tabela -->
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-sOtPdNtbVDCCGBAz34cTgmkWPIapYymwr9UTMrxbLnTcw8yR6tZN00G1P6uKKhgtDjZ3pQU2H7a9/pub?gid=665273406&single=true&output=csv';
+
+const PROXIES = [
+  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+];
+
+Chart.register(ChartDataLabels);
+
+const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const WEEKDAYS_PT = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+
+const BLUE_SHADES = [
+  '#0A2D6E','#1565C0','#1976D2','#1E88E5','#2196F3',
+  '#42A5F5','#64B5F6','#1A5276','#2471A3','#5DADE2'
+];
+
+// ─── STATE ────────────────────────────────────────────
+let allData = [];
+let charts  = {};
+
+const activeFilters = {
+  year: [], month: [], week: [], unit: [],
+  tech: [], service: [], maint: [], sector: []
+};
+
+// ─── DATE HELPERS ──────────────────────────────────────
+function parseBRDate(str) {
+  if (!str) return null;
+  const m = str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if (!m) return null;
+  return new Date(+m[3], +m[2] - 1, +m[1]);
+}
+
+// Lê data + horário completo (ex: "25/04/2026 17:07:54")
+function parseFullTimestamp(str) {
+  if (!str) return null;
+  const m = str.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}):(\d{2}))?/);
+  if (!m) return null;
+  return new Date(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+}
+
+function getISOWeek(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+// ─── TECHNICIAN SPLIT ──────────────────────────────────
+function splitTechs(str) {
+  if (!str) return [];
+  return str.split(/,|;/).map(t => t.trim()).filter(Boolean);
+}
+function getTechs(r) { return splitTechs(r[COL.techs]); }
+
+// ─── MACHINE NAME NORMALIZATION ────────────────────────
+// Agrupa variações de nome (case, acento, hífen, espaço) → nome canônico
+function normalizeMachineName(s) {
+  return (s || '')
+    .trim()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // remove acentos
+    .toLowerCase()
+    .replace(/[-_\/\.]+/g, ' ')  // unifica separadores
+    .replace(/\s+/g, ' ')        // colapsa espaços
+    .replace(/[^\w\s]/g, '')     // remove pontuação restante
+    .trim();
+}
+
+let _machineCanonical = {}; // normalizedKey → nome mais frequente
+
+function buildMachineAliases(data) {
+  const freq = {};
+  data.forEach(r => {
+    const raw = (r[COL.machine] || '').trim();
+    if (!raw) return;
+    const key = normalizeMachineName(raw);
+    if (!freq[key]) freq[key] = {};
+    freq[key][raw] = (freq[key][raw] || 0) + 1;
+  });
+  _machineCanonical = {};
+  Object.entries(freq).forEach(([key, names]) => {
+    // canônico = variação que aparece mais vezes
+    _machineCanonical[key] = Object.entries(names).sort((a, b) => b[1] - a[1])[0][0];
+  });
+}
+
+function canonicalMachine(r) {
+  const raw = (r[COL.machine] || '').trim();
+  if (!raw) return '-';
+  return _machineCanonical[normalizeMachineName(raw)] || raw;
+}
+
+// ─── COUNT HELPERS ─────────────────────────────────────
+function countBy(data, fn) {
+  const out = {};
+  data.forEach(r => {
+    const k = fn(r);
+    if (k) out[k] = (out[k] || 0) + 1;
+  });
+  return out;
+}
+
+// Participações: conta Math.max(nTechs, 1) por OS em vez de 1
+function countByPart(data, fn) {
+  const out = {};
+  data.forEach(r => {
+    const k = fn(r);
+    if (k) out[k] = (out[k] || 0) + Math.max(getTechs(r).length, 1);
+  });
+  return out;
+}
+
+function countTechs(data) {
+  const out = {};
+  data.forEach(r => {
+    getTechs(r).forEach(t => { out[t] = (out[t] || 0) + 1; });
+  });
+  return out;
+}
+
+// ─── FILTER LOGIC ──────────────────────────────────────
+function rowDate(r) {
+  // Usa "Data do Serviço" como referência principal (data real da OS)
+  // "Carimbo de data/hora" é apenas quando preencheram o formulário — pode ser outro dia
+  return parseBRDate(r[COL.date]) || parseBRDate(r[COL.timestamp]);
+}
+
+function applyFilters() {
+  const filtered = allData.filter(r => {
+    const d      = rowDate(r);
+    const year   = d ? String(d.getFullYear()) : '';
+    const month  = d ? MONTHS_PT[d.getMonth()] : '';
+    const week   = d ? `Semana ${getISOWeek(d)}` : '';
+    const unit   = (r[COL.unit]    || '').trim();
+    const svc    = (r[COL.service] || '').trim();
+    const maint  = (r[COL.maint]   || '').trim();
+    const sector = (r[COL.sector]  || '').trim();
+    const techs  = getTechs(r);
+
+    if (activeFilters.year.length   && !activeFilters.year.includes(year))   return false;
+    if (activeFilters.month.length  && !activeFilters.month.includes(month)) return false;
+    if (activeFilters.week.length   && !activeFilters.week.includes(week))   return false;
+    if (activeFilters.unit.length   && !activeFilters.unit.includes(unit))   return false;
+    if (activeFilters.service.length && !activeFilters.service.includes(svc)) return false;
+    if (activeFilters.maint.length  && !activeFilters.maint.includes(maint)) return false;
+    if (activeFilters.sector.length && !activeFilters.sector.includes(sector)) return false;
+    if (activeFilters.tech.length   && !activeFilters.tech.some(t => techs.includes(t))) return false;
+    return true;
+  });
+  updateHeaderYear();
+  renderDashboard(filtered);
+  renderTable(filtered);
+}
+
+// ─── FILTER UI ─────────────────────────────────────────
+function buildFilter(containerId, filterKey, values) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  values.forEach(v => {
+    const item = document.createElement('div');
+    item.className = 'filter-item';
+    item.dataset.value = v;
+    item.textContent = v;
+    item.onclick = () => toggleFilter(filterKey, v, item);
+    el.appendChild(item);
+  });
+}
+
+function toggleFilter(key, value, el) {
+  const idx = activeFilters[key].indexOf(value);
+  if (idx === -1) { activeFilters[key].push(value); el.classList.add('selected'); }
+  else            { activeFilters[key].splice(idx, 1); el.classList.remove('selected'); }
+  applyFilters();
+}
+
+function clearFilter(key) {
+  activeFilters[key] = [];
+  document.querySelectorAll(`#filter-${key} .filter-item`).forEach(el => el.classList.remove('selected'));
+  applyFilters();
+}
+
+function filterSearch(key, q) {
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const qn   = norm(q);
+  document.querySelectorAll(`#filter-${key} .filter-item`).forEach(el => {
+    el.classList.toggle('hidden', qn !== '' && !norm(el.dataset.value || '').includes(qn));
+  });
+}
+
+function initFilters() {
+  const years = [...new Set(allData.map(r => {
+    const d = rowDate(r); return d ? String(d.getFullYear()) : null;
+  }).filter(Boolean))].sort().reverse();
+
+  const monthsPresent = new Set(allData.map(r => {
+    const d = rowDate(r); return d ? MONTHS_PT[d.getMonth()] : null;
+  }).filter(Boolean));
+  const months = MONTHS_PT.filter(m => monthsPresent.has(m));
+
+  const weeksRaw = [...new Set(allData.map(r => {
+    const d = rowDate(r); return d ? `Semana ${getISOWeek(d)}` : null;
+  }).filter(Boolean))].sort((a, b) => +a.replace('Semana ','') - +b.replace('Semana ',''));
+
+  const units    = [...new Set(allData.map(r => (r[COL.unit]   ||'').trim()).filter(Boolean))].sort();
+  const services = [...new Set(allData.map(r => (r[COL.service]||'').trim()).filter(Boolean))].sort();
+  const maints   = [...new Set(allData.map(r => (r[COL.maint]  ||'').trim()).filter(Boolean))].sort();
+  const sectors  = [...new Set(allData.map(r => (r[COL.sector] ||'').trim()).filter(Boolean))].sort();
+  const techs    = Object.keys(countTechs(allData)).sort();
+
+  buildFilter('filter-year',    'year',    years);
+  buildFilter('filter-month',   'month',   months);
+  buildFilter('filter-week',    'week',    weeksRaw);
+  buildFilter('filter-unit',    'unit',    units);
+  buildFilter('filter-tech',    'tech',    techs);
+  buildFilter('filter-service', 'service', services);
+  buildFilter('filter-maint',   'maint',   maints);
+  buildFilter('filter-sector',  'sector',  sectors);
+}
+
+// ─── CHART HELPERS ─────────────────────────────────────
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+const defaultChartOpts = (horizontal = false) => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  layout: { padding: { top: horizontal ? 0 : 22, right: horizontal ? 45 : 0 } },
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      callbacks: {
+        label: ctx => ` ${horizontal ? ctx.parsed.x : ctx.parsed.y} OS`
+      }
+    },
+    datalabels: {
+      display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
+      color: '#333',
+      font: { size: 10, weight: '700' },
+      formatter: val => val > 0 ? val.toLocaleString('pt-BR') : '',
+      anchor: 'end',
+      align: horizontal ? 'right' : 'top',
+      offset: 2,
+      clip: false,
+      backgroundColor: 'rgba(220,220,220,0.88)',
+      borderRadius: 3,
+      padding: { top: 2, bottom: 2, left: 4, right: 4 },
+    }
+  },
+  scales: {
+    x: { grid: { color: '#EEF2F7' }, ticks: { font: { size: 10 }, color: '#333' } },
+    y: { grid: { color: '#EEF2F7' }, ticks: { font: { size: 10 }, color: '#333' } }
+  }
+});
+
+function barChart(id, labels, data, horizontal = false, extraOpts = {}) {
+  destroyChart(id);
+  const ctx = document.getElementById(id).getContext('2d');
+  const colors = data.map((_, i) => BLUE_SHADES[i % BLUE_SHADES.length]);
+  const opts = defaultChartOpts(horizontal);
+  if (horizontal) opts.indexAxis = 'y';
+  Object.assign(opts, extraOpts);
+  charts[id] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors,
+        borderRadius: 4,
+        borderSkipped: false
+      }]
+    },
+    options: opts
+  });
+}
+
+// ─── RENDER DASHBOARD ──────────────────────────────────
+function renderDashboard(data) {
+  const totalOS = data.length; // OS únicas (para % corretiva/preventiva)
+  // Participações = soma de técnicos por OS (1 técnico = 1, 2 técnicos = 2, etc.)
+  const total = data.reduce((sum, r) => sum + Math.max(getTechs(r).length, 1), 0);
+
+  // KPIs
+  document.getElementById('kpiTotal').textContent = total.toLocaleString('pt-BR');
+
+  const techCounts = countTechs(data);
+  document.getElementById('kpiTechs').textContent = Object.keys(techCounts).length;
+
+  const corretiva  = data.filter(r => /corretiva/i.test(r[COL.maint]||'')).reduce((s,r) => s + Math.max(getTechs(r).length, 1), 0);
+  const preventiva = data.filter(r => /preventiva/i.test(r[COL.maint]||'')).reduce((s,r) => s + Math.max(getTechs(r).length, 1), 0);
+  document.getElementById('kpiCorretiva').textContent  = corretiva;
+  document.getElementById('kpiPreventiva').textContent = preventiva;
+  document.getElementById('kpiCorretivaP').textContent  = total ? `${Math.round(corretiva /total*100)}% do total` : '-';
+  document.getElementById('kpiPreventivaP').textContent = total ? `${Math.round(preventiva/total*100)}% do total` : '-';
+
+  const sectors = new Set(data.map(r => (r[COL.sector]||'').trim()).filter(Boolean));
+  document.getElementById('kpiSetores').textContent = sectors.size;
+
+  // Chart: Unidade
+  const unitC = countByPart(data, r => (r[COL.unit]||'').trim());
+  const unitE = Object.entries(unitC).sort((a,b) => b[1]-a[1]);
+  barChart('chartUnit', unitE.map(e=>e[0]), unitE.map(e=>e[1]));
+
+  // Chart: Tipo de Serviço
+  const svcC = countByPart(data, r => (r[COL.service]||'').trim());
+  const svcE = Object.entries(svcC).sort((a,b) => b[1]-a[1]);
+  barChart('chartService', svcE.map(e=>e[0]), svcE.map(e=>e[1]));
+
+// Chart: Técnicos — 32px por técnico, sem limite máximo (mostra todos)
+  const techE   = Object.entries(techCounts).sort((a,b) => b[1]-a[1]);
+  const techH   = Math.max(300, techE.length * 32);
+  const techCanvas = document.getElementById('chartTech');
+  techCanvas.style.height = techH + 'px';
+  techCanvas.style.width  = '100%';
+  document.getElementById('techWrap').style.height = techH + 'px';
+  barChart('chartTech', techE.map(e=>e[0]), techE.map(e=>e[1]), true);
+
+  // Chart: Tipo de Manutenção
+  const maintC = countByPart(data, r => (r[COL.maint]||'').trim());
+  const maintE = Object.entries(maintC).sort((a,b) => b[1]-a[1]);
+  barChart('chartMaint', maintE.map(e=>e[0]), maintE.map(e=>e[1]));
+
+  // Chart: OS por Mês
+  const monthC = countByPart(data, r => {
+    const d = rowDate(r); return d ? MONTHS_PT[d.getMonth()] : null;
+  });
+  barChart('chartMonth',
+    MONTHS_PT,
+    MONTHS_PT.map(m => monthC[m] || 0),
+    false,
+    { scales: {
+        x: { grid: { color: '#EEF2F7' }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: '#EEF2F7' }, ticks: { font: { size: 10 } } }
+      }
+    }
+  );
+}
+
+// ─── LOAD DATA ─────────────────────────────────────────
+async function fetchCSV() {
+  // 1) Tenta direto (funciona no GitHub Pages)
+  try {
+    const res = await fetch(CSV_URL);
+    if (res.ok) return await res.text();
+  } catch (_) {}
+
+  // 2) Tenta cada proxy em sequência
+  for (const proxyFn of PROXIES) {
+    try {
+      const res = await fetch(proxyFn(CSV_URL));
+      if (res.ok) return await res.text();
+    } catch (_) {}
+  }
+
+  throw new Error(
+    'Não foi possível carregar os dados.\n' +
+    'Solução: publique o arquivo no GitHub Pages e acesse pelo link gerado.'
+  );
+}
+
+// Mapeia nomes reais do CSV → nomes canônicos usados no código
+let COL = {};
+function buildColMap(headers) {
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const map  = {};
+  headers.forEach(h => { map[norm(h)] = h; });
+  const find = (...keys) => {
+    for (const k of keys) { if (map[norm(k)]) return map[norm(k)]; }
+    return keys[0]; // fallback
+  };
+  COL = {
+    timestamp : find('Carimbo de data/hora'),
+    unit      : find('Unidade'),
+    sector    : find('Localização (setor)', 'Localizacao (setor)'),
+    machine   : find('Máquina/equipamento', 'Maquina/equipamento'),
+    service   : find('Tipo de serviço', 'Tipo de servico', 'Tipo de Serviço'),
+    maint     : find('Tipo de manutenção', 'Tipo de manutencao', 'Tipo de Manutenção'),
+    techs     : find('Técnico(s)', 'Tecnico(s)'),
+    date      : find('Data do Serviço', 'Data do Servico'),
+    problem   : find('Descrição do Problema', 'Descricao do Problema', 'Descrição do problema'),
+  };
+  console.log('Colunas mapeadas:', COL);
+}
+
+async function loadData() {
+  try {
+    const text   = await fetchCSV();
+    const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+
+    buildColMap(parsed.meta.fields || []);
+
+    allData = parsed.data.filter(r =>
+      r[COL.timestamp] || r[COL.date]
+    );
+
+    buildMachineAliases(allData);
+
+    document.getElementById('loadingDiv').style.display = 'none';
+    const dash = document.getElementById('dashboardDiv');
+    dash.style.display = 'flex';
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+    const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    window._loadTime = { dateStr, timeStr };
+    updateHeaderYear();
+
+    initFilters();
+    applyFilters();
+
+  } catch (err) {
+    document.getElementById('loadingDiv').innerHTML =
+      `<div style="color:#E91E63;font-size:14px">⚠ Erro ao carregar dados.<br><small>${err.message}</small></div>`;
+    console.error(err);
+  }
+}
+
+function updateHeaderYear() {
+  const el = document.getElementById('headerSubtitle');
+  if (!el) return;
+  const periodo = activeFilters.year.length === 1 ? activeFilters.year[0]
+                : activeFilters.year.length > 1   ? activeFilters.year.join(' / ')
+                : 'Todos os anos';
+  const t = window._loadTime || {};
+  const parts = [
+    allData.length ? `${allData.length.toLocaleString('pt-BR')} OS registradas` : '',
+    periodo,
+    t.dateStr || '',
+    t.timeStr ? `${t.timeStr}` : '',
+  ].filter(Boolean);
+  el.textContent = parts.join(' · ');
+}
+
+function toggleDarkMode() {
+  const dark = document.body.classList.toggle('dark');
+  document.getElementById('btnDark').textContent = dark ? '☀️' : '🌙';
+  try { localStorage.setItem('pj-dark', dark ? '1' : '0'); } catch(_) {}
+}
+(function() {
+  try { if (localStorage.getItem('pj-dark') === '1') {
+    document.body.classList.add('dark');
+    document.getElementById('btnDark').textContent = '☀️';
+  } } catch(_) {}
+})();
+
+function manualRefresh() {
+  const btn  = document.getElementById('btnRefresh');
+  const icon = document.getElementById('refreshIcon');
+  btn.disabled = true;
+  icon.style.animation = 'spin 0.7s linear infinite';
+  loadData().finally(() => {
+    btn.disabled = false;
+    icon.style.animation = '';
+  });
+}
+
+// ─── TABS ────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    if (b.textContent.toLowerCase().includes(name === 'graficos' ? 'gráf' : 'tabel'))
+      b.classList.add('active');
+  });
+}
+
+// ─── TABLE ───────────────────────────────────────────
+let tableData    = [];
+let tableExpanded = false;
+let tableSorted   = []; // cache da ordenação, reutilizado no toggle
+
+// Uma linha por OS — todos os técnicos juntos na mesma célula
+function groupByOS(data) {
+  return data.map(r => {
+    const techs = getTechs(r);
+    return { ...r, _tech: techs.length ? techs.join(', ') : (r[COL.techs] || '-') };
+  });
+}
+
+// Uma linha por técnico
+function expandByTech(data) {
+  const out = [];
+  data.forEach(r => {
+    const techs = getTechs(r);
+    if (techs.length === 0) out.push({ ...r, _tech: '-' });
+    else techs.forEach(t => out.push({ ...r, _tech: t }));
+  });
+  return out;
+}
+
+function buildTableData() {
+  tableData = tableExpanded ? expandByTech(tableSorted) : groupByOS(tableSorted);
+}
+
+function toggleTableMode() {
+  tableExpanded = !tableExpanded;
+  const btn = document.getElementById('btnToggleTech');
+  if (tableExpanded) {
+    btn.classList.add('active');
+    btn.lastChild.textContent = ' Agrupar por OS';
+  } else {
+    btn.classList.remove('active');
+    btn.lastChild.textContent = ' Expandir por Técnico';
+  }
+  colFilterValues = {};
+  document.querySelectorAll('.col-filter').forEach(s => s.value = '');
+  buildTableData();
+  applyTableSearch();
+}
+
+function renderTable(data) {
+  tableSorted = [...data].sort((a, b) => {
+    const da = parseFullTimestamp(a[COL.timestamp]);
+    const db = parseFullTimestamp(b[COL.timestamp]);
+    if (!da) return 1; if (!db) return -1;
+    return db - da;
+  });
+  buildTableData();
+  applyTableSearch();
+}
+
+// Retorna os valores de cada coluna para uma linha
+function rowCols(r) {
+  return [
+    r[COL.timestamp] || '-',
+    r[COL.date]      || '-',
+    r[COL.unit]      || '-',
+    r[COL.sector]    || '-',
+    canonicalMachine(r),
+    r[COL.service]   || '-',
+    r[COL.maint]     || '-',
+    r._tech          || '-',
+    r[COL.problem]   || '-',
+    r['Serviço realizado'] || r['Servico realizado'] || '-',
+  ];
+}
+
+let colFilterValues = {}; // { colIndex: valor selecionado }
+
+function populateColFilters(rows) {
+  const selects = document.querySelectorAll('.col-filter');
+  selects.forEach(sel => {
+    const col = +sel.dataset.col;
+    const current = sel.value;
+    const vals = [...new Set(rows.map(r => rowCols(r)[col]).filter(v => v && v !== '-'))].sort();
+    sel.innerHTML = '<option value="">Todos</option>' +
+      vals.map(v => `<option value="${v.replace(/"/g,'&quot;')}"${v===current?'selected':''}>${v}</option>`).join('');
+  });
+}
+
+function applyColFilters() {
+  colFilterValues = {};
+  document.querySelectorAll('.col-filter').forEach(sel => {
+    if (sel.value) colFilterValues[+sel.dataset.col] = sel.value;
+  });
+  applyTableSearch();
+}
+
+function applyTableSearch() {
+  const q = (document.getElementById('tableSearch')?.value || '').toLowerCase();
+  let rows = q
+    ? tableData.filter(r => Object.values(r).some(v => (v||'').toLowerCase().includes(q)))
+    : tableData;
+
+  // Aplica filtros por coluna
+  Object.entries(colFilterValues).forEach(([col, val]) => {
+    rows = rows.filter(r => rowCols(r)[+col] === val);
+  });
+
+  buildTableRows(rows);
+}
+
+function filterTable() { applyTableSearch(); }
+
+function buildTableRows(rows) {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    rowCols(r).forEach(val => {
+      const td = document.createElement('td');
+      td.textContent = val;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  document.getElementById('tableInfo').textContent =
+    `${rows.length.toLocaleString('pt-BR')} linhas exibidas`;
+  populateColFilters(tableData);
+}
+
+// ─── EXCEL EXPORT ────────────────────────────────────
+function exportarExcel() {
+  const headers = ['Inserido em','Data do Serviço','Unidade','Setor','Máquina/Equipamento',
+                   'Tipo de Serviço','Tipo de Manutenção','Técnico','Descrição do Problema','Serviço Realizado'];
+  const rows = tableData.map(r => rowCols(r));
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws['!cols'] = headers.map((h,i) => ({ wch: i === 7 ? 40 : i === 6 ? 35 : i === 8 ? 50 : 20 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Ordens de Serviço');
+  const ano = activeFilters.year.length ? activeFilters.year.join('-') : 'todos';
+  XLSX.writeFile(wb, `OS-${ano}-${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.xlsx`);
+}
+
+// ─── PDF TABLE ───────────────────────────────────────
+function exportarTabelaPDF() {
+  showTab('tabela');
+  setTimeout(() => window.print(), 300);
+}
+
+// ─── EXPORT ──────────────────────────────────────────
+function toggleExportMenu() {
+  const menu = document.getElementById('exportMenu');
+  menu.classList.toggle('open');
+}
+
+// Fecha o menu se clicar fora
+document.addEventListener('click', e => {
+  if (!document.getElementById('exportWrap').contains(e.target)) {
+    document.getElementById('exportMenu').classList.remove('open');
+  }
+});
+
+async function exportarImagem() {
+  document.getElementById('exportMenu').classList.remove('open');
+  showTab('graficos'); // garante que gráficos estão visíveis
+
+  const btn = document.querySelector('.btn-export');
+  const originalHTML = btn.innerHTML;
+  btn.innerHTML = '⏳ Gerando...';
+  btn.disabled = true;
+
+  await new Promise(r => setTimeout(r, 150)); // aguarda renderização
+
+  try {
+    const canvas = await html2canvas(document.getElementById('dashboardDiv'), {
+      backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#EEF3FA',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    });
+
+    const link = document.createElement('a');
+    const ano  = activeFilters.year.length ? activeFilters.year.join('-') : 'todos';
+    link.download = `dashboard-OS-${ano}-${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (e) {
+    alert('Erro ao gerar imagem: ' + e.message);
+  } finally {
+    btn.innerHTML = originalHTML;
+    btn.disabled = false;
+  }
+}
+
+function exportarPDF() {
+  document.getElementById('exportMenu').classList.remove('open');
+  showTab('graficos'); // garante impressão apenas dos gráficos e KPIs
+  setTimeout(() => window.print(), 200);
+}
+
+// Load on start + auto-refresh every 5 min
+loadData();
+setInterval(loadData, 5 * 60 * 1000);
+</script>
+</body>
+</html>
