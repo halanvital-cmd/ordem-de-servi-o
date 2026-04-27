@@ -1400,6 +1400,11 @@ async function exportarImagem() {
   tabG.style.overflow  = 'visible';
   tabG.style.maxHeight = 'none';
 
+  // Garante que o scroll interno está no topo para capturar os KPIs
+  const prevMainScroll = main.scrollTop;
+  main.scrollTop = 0;
+  window.scrollTo(0, 0);
+
   await new Promise(r => setTimeout(r, 300)); // aguarda reflow
 
   try {
@@ -1410,7 +1415,9 @@ async function exportarImagem() {
       useCORS: true,
       logging: false,
       scrollX: 0,
-      scrollY: -window.scrollY,
+      scrollY: 0,
+      x: 0,
+      y: 0,
       width:  dash.scrollWidth,
       height: dash.scrollHeight,
       windowWidth:  dash.scrollWidth,
@@ -1432,6 +1439,7 @@ async function exportarImagem() {
     main.style.maxHeight = saved.mainH;
     tabG.style.overflow  = saved.tabOv;
     tabG.style.maxHeight = saved.tabH;
+    main.scrollTop = prevMainScroll;
     btn.innerHTML = originalHTML;
     btn.disabled  = false;
   }
