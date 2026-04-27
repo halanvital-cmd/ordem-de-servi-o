@@ -251,44 +251,94 @@
     }
 
     @media print {
-      @page { size: A4 landscape; margin: 10mm; }
+      @page { size: A4 landscape; margin: 8mm 10mm; }
 
-      body { overflow: visible !important; background: white !important; }
-      .header { box-shadow: none !important; }
-      .sidebar, .header-right, #loadingDiv, .tabs-bar { display: none !important; }
-
-      .layout { height: auto !important; overflow: visible !important; flex-direction: column !important; }
-      .main   { overflow: visible !important; padding: 6px !important; flex: none !important; }
-
-      #tab-graficos { display: flex !important; flex-direction: column !important; gap: 8px !important; }
-      #tab-tabela   { display: none !important; }
-
-      /* Grid de 2 colunas no print */
-      #tab-graficos > div[style*="grid"] {
-        display: grid !important;
-        grid-template-columns: 1fr 1.8fr !important;
-        gap: 8px !important;
-        page-break-inside: avoid;
+      html, body {
+        width: 297mm !important;
+        overflow: visible !important;
+        background: white !important;
+        margin: 0 !important; padding: 0 !important;
       }
 
-      /* KPI sem quebra */
-      .kpi-row { break-inside: avoid; page-break-inside: avoid; }
+      .header { box-shadow: none !important; width: 100% !important; page-break-inside: avoid; }
+      .sidebar, .header-right, #loadingDiv, .tabs-bar { display: none !important; }
+
+      .layout {
+        height: auto !important; overflow: visible !important;
+        flex-direction: column !important; width: 100% !important;
+      }
+      .main {
+        overflow: visible !important; padding: 4px !important;
+        flex: none !important; width: 100% !important;
+        max-width: 100% !important; height: auto !important;
+      }
+      #dashboardDiv {
+        height: auto !important; overflow: visible !important; width: 100% !important;
+      }
+
+      #tab-graficos {
+        display: flex !important; flex-direction: column !important;
+        gap: 6px !important; overflow: visible !important; width: 100% !important;
+      }
+      #tab-tabela { display: none !important; }
+
+      /* Grid de 2 colunas — proporção ajustada para caber no A4 landscape */
+      #tab-graficos > div[style*="grid"] {
+        display: grid !important;
+        grid-template-columns: 1fr 1.55fr !important;
+        gap: 6px !important;
+        page-break-inside: avoid;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+      }
+
+      /* Coluna esquerda */
+      #tab-graficos > div[style*="grid"] > div:first-child {
+        display: flex !important; flex-direction: column !important;
+        gap: 6px !important; overflow: hidden !important; min-width: 0 !important;
+      }
+
+      /* KPI */
+      .kpi-row { break-inside: avoid; page-break-inside: avoid; width: 100% !important; }
       .kpi-card { border: 1px solid #ccc !important; box-shadow: none !important; }
 
-      /* Alturas fixas para os charts renderizarem */
-      .chart-card { break-inside: avoid; page-break-inside: avoid; box-shadow: none !important; border: 1px solid #ddd !important; }
-      .chart-card[style*="flex:1"] { height: 220px !important; flex: none !important; }
-      .chart-wrap { height: 160px !important; }
-      .chart-wrap canvas { height: 160px !important; max-height: 160px !important; }
+      /* Cards */
+      .chart-card {
+        break-inside: avoid; page-break-inside: avoid;
+        box-shadow: none !important; border: 1px solid #ddd !important;
+        overflow: hidden !important; max-width: 100% !important; min-width: 0 !important;
+      }
+      .chart-card[style*="flex:1"], .chart-card[style*="flex: 1"] {
+        height: 185px !important; flex: none !important; min-height: 0 !important;
+      }
 
-      /* Técnicos: limita altura no print */
-      #techWrap { height: 420px !important; max-height: 420px !important; overflow: hidden !important; }
-      #techWrap canvas { height: 420px !important; max-height: 420px !important; }
+      /* Chart wrappers */
+      .chart-wrap {
+        height: 135px !important; overflow: hidden !important;
+        max-width: 100% !important; position: relative !important;
+      }
+      .chart-wrap canvas {
+        height: 135px !important; max-height: 135px !important;
+        width: 100% !important; max-width: 100% !important;
+      }
+
+      /* Técnicos — coluna direita */
+      #techWrap {
+        height: 370px !important; max-height: 370px !important;
+        overflow: hidden !important; width: 100% !important; max-width: 100% !important;
+      }
+      #techWrap canvas {
+        height: 370px !important; max-height: 370px !important;
+        width: 100% !important; max-width: 100% !important;
+      }
 
       /* OS por Mês */
-      .chart-card[style*="height:240px"] { height: 220px !important; }
+      .chart-card[style*="height:240px"] { height: 195px !important; }
+      .chart-card[style*="height:240px"] .chart-wrap { height: 145px !important; }
+      .chart-card[style*="height:240px"] .chart-wrap canvas { height: 145px !important; max-height: 145px !important; }
 
-      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
 
     /* ─── LAYOUT ─── */
@@ -1324,21 +1374,47 @@ document.addEventListener('click', e => {
 
 async function exportarImagem() {
   document.getElementById('exportMenu').classList.remove('open');
-  showTab('graficos'); // garante que gráficos estão visíveis
+  showTab('graficos');
 
   const btn = document.querySelector('.btn-export');
   const originalHTML = btn.innerHTML;
   btn.innerHTML = '⏳ Gerando...';
   btn.disabled = true;
 
-  await new Promise(r => setTimeout(r, 150)); // aguarda renderização
+  // Elementos que precisam ser expandidos para capturar conteúdo total
+  const dash = document.getElementById('dashboardDiv');
+  const main = document.getElementById('mainArea');
+  const tabG = document.getElementById('tab-graficos');
+
+  const saved = {
+    dashH: dash.style.height,     dashOv: dash.style.overflow,
+    mainOv: main.style.overflow,  mainH: main.style.maxHeight,
+    tabOv: tabG.style.overflow,   tabH: tabG.style.maxHeight,
+  };
+
+  // Expande tudo para que html2canvas veja o conteúdo completo
+  dash.style.height    = 'auto';
+  dash.style.overflow  = 'visible';
+  main.style.overflow  = 'visible';
+  main.style.maxHeight = 'none';
+  tabG.style.overflow  = 'visible';
+  tabG.style.maxHeight = 'none';
+
+  await new Promise(r => setTimeout(r, 300)); // aguarda reflow
 
   try {
-    const canvas = await html2canvas(document.getElementById('dashboardDiv'), {
-      backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#EEF3FA',
+    const bgColor = getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#EEF3FA';
+    const canvas = await html2canvas(dash, {
+      backgroundColor: bgColor,
       scale: 2,
       useCORS: true,
       logging: false,
+      scrollX: 0,
+      scrollY: -window.scrollY,
+      width:  dash.scrollWidth,
+      height: dash.scrollHeight,
+      windowWidth:  dash.scrollWidth,
+      windowHeight: dash.scrollHeight,
     });
 
     const link = document.createElement('a');
@@ -1349,8 +1425,15 @@ async function exportarImagem() {
   } catch (e) {
     alert('Erro ao gerar imagem: ' + e.message);
   } finally {
+    // Restaura estado original
+    dash.style.height    = saved.dashH;
+    dash.style.overflow  = saved.dashOv;
+    main.style.overflow  = saved.mainOv;
+    main.style.maxHeight = saved.mainH;
+    tabG.style.overflow  = saved.tabOv;
+    tabG.style.maxHeight = saved.tabH;
     btn.innerHTML = originalHTML;
-    btn.disabled = false;
+    btn.disabled  = false;
   }
 }
 
