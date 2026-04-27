@@ -8,6 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     /* ══════════════════════════════════════════════
@@ -539,7 +540,7 @@
         </div>
         <div class="export-item" onclick="exportarPDF()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1565C0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          Imprimir / Salvar PDF
+          Baixar PDF
         </div>
       </div>
     </div>
@@ -1445,10 +1446,89 @@ async function exportarImagem() {
   }
 }
 
-function exportarPDF() {
+async function exportarPDF() {
   document.getElementById('exportMenu').classList.remove('open');
-  showTab('graficos'); // garante impressão apenas dos gráficos e KPIs
-  setTimeout(() => window.print(), 200);
+  showTab('graficos');
+
+  const btn = document.querySelector('.btn-export');
+  const originalHTML = btn.innerHTML;
+  btn.innerHTML = '⏳ Gerando PDF...';
+  btn.disabled = true;
+
+  const dash = document.getElementById('dashboardDiv');
+  const main = document.getElementById('mainArea');
+  const tabG = document.getElementById('tab-graficos');
+
+  const saved = {
+    dashH: dash.style.height,     dashOv: dash.style.overflow,
+    mainOv: main.style.overflow,  mainH: main.style.maxHeight,
+    tabOv: tabG.style.overflow,   tabH: tabG.style.maxHeight,
+  };
+
+  dash.style.height    = 'auto';
+  dash.style.overflow  = 'visible';
+  main.style.overflow  = 'visible';
+  main.style.maxHeight = 'none';
+  tabG.style.overflow  = 'visible';
+  tabG.style.maxHeight = 'none';
+
+  const prevMainScroll = main.scrollTop;
+  main.scrollTop = 0;
+  window.scrollTo(0, 0);
+
+  await new Promise(r => setTimeout(r, 300));
+
+  try {
+    const bgColor = getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#ffffff';
+    const canvas = await html2canvas(dash, {
+      backgroundColor: bgColor,
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      scrollX: 0,
+      scrollY: 0,
+      x: 0, y: 0,
+      width:  dash.scrollWidth,
+      height: dash.scrollHeight,
+      windowWidth:  dash.scrollWidth,
+      windowHeight: dash.scrollHeight,
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+
+    // A4 landscape em mm
+    const pdfW = 297, pdfH = 210, margin = 8;
+    const availW = pdfW - margin * 2;
+    const availH = pdfH - margin * 2;
+
+    // Converte pixels (scale:2) → mm (96dpi)
+    const imgWmm = canvas.width  / 2 / 96 * 25.4;
+    const imgHmm = canvas.height / 2 / 96 * 25.4;
+
+    const scale  = Math.min(availW / imgWmm, availH / imgHmm);
+    const finalW = imgWmm * scale;
+    const finalH = imgHmm * scale;
+
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    pdf.addImage(imgData, 'PNG', margin, margin, finalW, finalH);
+
+    const ano = activeFilters.year.length ? activeFilters.year.join('-') : 'todos';
+    pdf.save(`dashboard-OS-${ano}-${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.pdf`);
+
+  } catch (e) {
+    alert('Erro ao gerar PDF: ' + e.message);
+  } finally {
+    dash.style.height    = saved.dashH;
+    dash.style.overflow  = saved.dashOv;
+    main.style.overflow  = saved.mainOv;
+    main.style.maxHeight = saved.mainH;
+    tabG.style.overflow  = saved.tabOv;
+    tabG.style.maxHeight = saved.tabH;
+    main.scrollTop = prevMainScroll;
+    btn.innerHTML = originalHTML;
+    btn.disabled  = false;
+  }
 }
 
 // Load on start + auto-refresh every 5 min
