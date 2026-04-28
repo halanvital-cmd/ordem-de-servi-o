@@ -432,8 +432,8 @@
     /* ─── KPI ROW ─── */
     .kpi-row {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 10px; flex-shrink: 0;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px; flex-shrink: 0;
     }
     .kpi-card {
       background: var(--card-bg);
@@ -1049,8 +1049,8 @@ function renderDashboard(data) {
   document.getElementById('kpiCorretivaP').textContent  = total ? `${Math.round(corretiva /total*100)}% do total` : '-';
   document.getElementById('kpiPreventivaP').textContent = total ? `${Math.round(preventiva/total*100)}% do total` : '-';
 
-  const melhoria = data.filter(r => /melhoria/i.test(r[COL.service]||'')).reduce((s,r) => s + Math.max(getTechs(r).length, 1), 0);
-  const usinagem = data.filter(r => /usinagem/i.test(r[COL.service]||'')).reduce((s,r) => s + Math.max(getTechs(r).length, 1), 0);
+  const melhoria = data.filter(r => /melhoria/i.test(r[COL.maint]||'')).reduce((s,r) => s + Math.max(getTechs(r).length, 1), 0);
+  const usinagem = data.filter(r => /usinagem/i.test(r[COL.maint]||'')).reduce((s,r) => s + Math.max(getTechs(r).length, 1), 0);
   document.getElementById('kpiMelhoria').textContent  = melhoria;
   document.getElementById('kpiUsinagem').textContent  = usinagem;
   document.getElementById('kpiMelhoriaP').textContent  = total ? `${Math.round(melhoria/total*100)}% do total` : '-';
