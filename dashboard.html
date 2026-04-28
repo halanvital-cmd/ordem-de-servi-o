@@ -448,13 +448,13 @@
     .kpi-card::before {
       content: '';
       position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
-      background: var(--accent);
+      background: var(--before-color, var(--accent));
       border-radius: 10px 0 0 10px;
     }
-    .kpi-card.pink::before   { background: #E91E63; }
-    .kpi-card.green::before  { background: #2E7D32; }
-    .kpi-card.orange::before { background: #E65100; }
-    .kpi-card.teal::before   { background: #00796B; }
+    .kpi-card.pink::before   { --before-color: #E91E63; }
+    .kpi-card.green::before  { --before-color: #2E7D32; }
+    .kpi-card.orange::before { --before-color: #E65100; }
+    .kpi-card.teal::before   { --before-color: #00796B; }
     .kpi-label {
       font-size: 9px; font-weight: 700; text-transform: uppercase;
       letter-spacing: 0.7px; color: var(--text-muted); padding-left: 8px;
@@ -620,9 +620,14 @@
           <div class="kpi-sub" id="kpiPreventivaP">do total</div>
         </div>
         <div class="kpi-card teal">
-          <div class="kpi-label">Setores Atendidos</div>
-          <div class="kpi-value teal" id="kpiSetores">-</div>
-          <div class="kpi-sub">locais únicos</div>
+          <div class="kpi-label">OS Melhoria</div>
+          <div class="kpi-value teal" id="kpiMelhoria">-</div>
+          <div class="kpi-sub" id="kpiMelhoriaP">do total</div>
+        </div>
+        <div class="kpi-card" style="--before-color:#7B1FA2;">
+          <div class="kpi-label">OS Usinagem</div>
+          <div class="kpi-value" style="color:#7B1FA2;" id="kpiUsinagem">-</div>
+          <div class="kpi-sub" id="kpiUsinagemP">do total</div>
         </div>
       </div>
 
@@ -1044,8 +1049,12 @@ function renderDashboard(data) {
   document.getElementById('kpiCorretivaP').textContent  = total ? `${Math.round(corretiva /total*100)}% do total` : '-';
   document.getElementById('kpiPreventivaP').textContent = total ? `${Math.round(preventiva/total*100)}% do total` : '-';
 
-  const sectors = new Set(data.map(r => (r[COL.sector]||'').trim()).filter(Boolean));
-  document.getElementById('kpiSetores').textContent = sectors.size;
+  const melhoria = data.filter(r => /melhoria/i.test(r[COL.service]||'')).reduce((s,r) => s + Math.max(getTechs(r).length, 1), 0);
+  const usinagem = data.filter(r => /usinagem/i.test(r[COL.service]||'')).reduce((s,r) => s + Math.max(getTechs(r).length, 1), 0);
+  document.getElementById('kpiMelhoria').textContent  = melhoria;
+  document.getElementById('kpiUsinagem').textContent  = usinagem;
+  document.getElementById('kpiMelhoriaP').textContent  = total ? `${Math.round(melhoria/total*100)}% do total` : '-';
+  document.getElementById('kpiUsinagemP').textContent  = total ? `${Math.round(usinagem/total*100)}% do total` : '-';
 
   // Chart: Unidade
   const unitC = countByPart(data, r => (r[COL.unit]||'').trim());
