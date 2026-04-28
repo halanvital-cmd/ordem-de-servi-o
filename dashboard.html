@@ -665,7 +665,7 @@
         </div>
 
         <!-- Coluna direita: Técnicos (dinâmico) + OS por Mês -->
-        <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; flex-direction:column; gap:10px; align-self:stretch;">
           <div class="chart-card">
             <div class="chart-card-header">
               <div class="chart-title">Quantidade de Ordens de Serviço por Técnico</div>
@@ -674,11 +674,11 @@
               <canvas id="chartTech"></canvas>
             </div>
           </div>
-          <div class="chart-card" style="height:240px">
+          <div class="chart-card" style="flex:1; min-height:200px;">
             <div class="chart-card-header">
               <div class="chart-title">Quantidade de OS por Mês</div>
             </div>
-            <div class="chart-wrap"><canvas id="chartMonth"></canvas></div>
+            <div class="chart-wrap" style="height:calc(100% - 36px);"><canvas id="chartMonth"></canvas></div>
           </div>
         </div>
 
